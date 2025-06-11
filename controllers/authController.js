@@ -77,7 +77,6 @@ export const register = async (req, res, location) => {
 };
 
 // Login Controller
-// Login Controller
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -142,33 +141,29 @@ export const login = async (req, res) => {
 
     // --- FIX TIME HANDLING USING LUXON ---
 
-    // User timezone, fallback to UTC if not available
+    const now = DateTime.utc();  // Get the current UTC time
+
+    // Get the user's time zone from the request header or fallback to 'UTC'
     const userTimezone = req.headers['x-user-timezone'] || 'UTC';
 
-    // Server timezone based on where the server is located
+    // Get the server's time zone (e.g., the server's time zone can be 'America/Los_Angeles', 'Europe/London', etc.)
     const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    // Use UTC time as base, then convert to respective zones
-    const now = DateTime.utc();
-
-    // Convert to User's timezone
+    // Convert to User's local time
     const userTime = now.setZone(userTimezone);
+    const userTimeStr = userTime.toFormat('HH:mm:ss');  // Format as "HH:mm:ss"
 
-    // Convert to Server's timezone
+    // Convert to Server's local time
     const serverTime = now.setZone(serverTimezone);
-
-    // Get formatted time strings
-    const userTimeStr = userTime.toFormat('HH:mm:ss');
-    const serverTimeStr = serverTime.toFormat('HH:mm:ss');
-    const serverTimeWithZone = `${serverTimeStr} ${serverTimezone}`;
+    const serverTimeStr = serverTime.toFormat('HH:mm:ss');  // Format as "HH:mm:ss"
+    const serverTimeWithZone = `${serverTimeStr} ${serverTimezone}`;  // e.g., "08:01:55 America/Los_Angeles"
 
     // Get the date formatted for the user's time zone
-    const dateStr = userTime.toFormat('MMMM dd, yyyy');
-
-    // Logging key
-    const logKey = `log${user.loginHistory.length + 1}`;
+    const dateStr = userTime.toFormat('MMMM dd, yyyy');  // e.g., "June 11, 2025"
 
     // Create the login history log entry
+    const logKey = `log${user.loginHistory.length + 1}`;
+
     const currentLog = {
       log: logKey,
       date: dateStr,
@@ -187,7 +182,7 @@ export const login = async (req, res) => {
       user: {
         name: user.name,
         email: user.email,
-        user_id: user._id,       // Fixed typo from user.usId to user._id
+        user_id: user._id,
         lastLogin: user.lastLogin,
         lastLoginIp: user.lastLoginIp,
         recentLogins: [currentLog]  // Only return the current login log
