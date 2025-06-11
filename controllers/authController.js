@@ -96,35 +96,40 @@ export const login = async (req, res) => {
       location = 'Localhost or Private Network';
     }
 
-    user.lastLogin = new Date();
-    user.lastLoginIp = ip;
 
-    if (!Array.isArray(user.loginHistory)) {
-      user.loginHistory = [];
-    }
+user.lastLogin = new Date();
+user.lastLoginIp = ip;
 
-    const now = new Date();
-    const userTimezone = req.headers['x-user-timezone'] || 'UTC';
-    const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+// Ensure loginHistory is an array
+if (!user.loginHistory || !Array.isArray(user.loginHistory)) {
+  if (user.loginHistory && typeof user.loginHistory === 'object') {
+    user.loginHistory = Object.values(user.loginHistory);
+  } else {
+    user.loginHistory = [];
+  }
+}
 
-    const userTimeStr = now.toLocaleTimeString('en-US', { timeZone: userTimezone, hour12: false });
-    const serverTimeStr = now.toLocaleTimeString('en-US', { timeZone: serverTimezone, hour12: false });
-    const dateStr = now.toLocaleDateString('en-US', { timeZone: userTimezone, year: 'numeric', month: 'long', day: 'numeric' });
+const now = new Date();
+const userTimezone = req.headers['x-user-timezone'] || 'UTC';
+const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    // create the log key like "log1", "log2", etc.
-    const logKey = `log${user.loginHistory.length + 1}`;
+const userTimeStr = now.toLocaleTimeString('en-US', { timeZone: userTimezone, hour12: false });
+const serverTimeStr = now.toLocaleTimeString('en-US', { timeZone: serverTimezone, hour12: false });
+const dateStr = now.toLocaleDateString('en-US', { timeZone: userTimezone, year: 'numeric', month: 'long', day: 'numeric' });
 
-    user.loginHistory.push({
-      log: logKey,
-      date: dateStr,
-      user_time: `${userTimeStr} ${userTimezone}`,
-      server_time: `${serverTimeStr} ${serverTimezone}`,
-      ip,
-      location,
-      userAgent: req.headers['user-agent']
-    });
+const logKey = `log${user.loginHistory.length + 1}`;
 
-    await user.save();
+user.loginHistory.push({
+  log: logKey,
+  date: dateStr,
+  user_time: `${userTimeStr} ${userTimezone}`,
+  server_time: `${serverTimeStr} ${serverTimezone}`,
+  ip,
+  location,
+  userAgent: req.headers['user-agent']
+});
+
+await user.save();
 
     res.json({
       token,
