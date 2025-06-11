@@ -6,7 +6,21 @@ import axios from 'axios';
 // Register Controller
 export const register = async (req, res, location) => {
   try {
-    const { name, email, password } = req.body;
+    const {
+      name,
+      email,
+      password,
+      phoneNumber,
+      profilePictureUrl,
+      bio,
+      address,
+      dateOfBirth,
+      gender,
+      socialLinks,
+      preferences,
+      twoFactorEnabled,
+      accountStatus
+    } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -24,6 +38,16 @@ export const register = async (req, res, location) => {
       name,
       email,
       password: hashedPassword,
+      phoneNumber: phoneNumber || '',
+      profilePictureUrl: profilePictureUrl || '',
+      bio: bio || '',
+      address: address || '',
+      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+      gender: gender || '',
+      socialLinks: socialLinks || {},
+      preferences: preferences || {},
+      twoFactorEnabled: twoFactorEnabled || false,
+      accountStatus: accountStatus || 'active',
       registrationLocation: location || 'Unknown',
       createdAt: new Date()
     });
@@ -65,6 +89,7 @@ export const login = async (req, res) => {
       expiresIn: '7d'
     });
 
+    // Normalize IP address
     let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
     if (ip === '::1' || ip === '::ffff:127.0.0.1') ip = '127.0.0.1';
     if (ip.includes(',')) ip = ip.split(',')[0].trim();
@@ -98,7 +123,7 @@ export const login = async (req, res) => {
     user.lastLogin = new Date();
     user.lastLoginIp = ip;
 
-    // ✅ Ensure loginHistory is an array and convert if needed
+    // Ensure loginHistory is an array
     if (!Array.isArray(user.loginHistory)) {
       const original = user.loginHistory;
       user.loginHistory = [];
@@ -122,7 +147,7 @@ export const login = async (req, res) => {
 
     const logKey = `log${user.loginHistory.length + 1}`;
 
-    user.loginHistory.push({
+    const currentLog = {
       log: logKey,
       date: dateStr,
       user_time: `${userTimeStr} ${userTimezone}`,
@@ -130,7 +155,9 @@ export const login = async (req, res) => {
       ip,
       location,
       userAgent: req.headers['user-agent']
-    });
+    };
+
+    user.loginHistory.push(currentLog);
 
     await user.save();
 
@@ -142,7 +169,7 @@ export const login = async (req, res) => {
         user_id: user.usId,
         lastLogin: user.lastLogin,
         lastLoginIp: user.lastLoginIp,
-        recentLogins: user.loginHistory.slice(-5).reverse()
+        recentLogins: [currentLog]  // Only return the current login log
       }
     });
 
