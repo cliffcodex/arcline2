@@ -77,6 +77,7 @@ export const register = async (req, res, location) => {
 };
 
 // Login Controller
+// Login Controller
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -139,23 +140,40 @@ export const login = async (req, res) => {
       }
     }
 
-    // --- REPLACED TIME HANDLING WITH LUXON ---
-    const userTimezone = req.headers['x-user-timezone'] || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    // --- FIX TIME HANDLING USING LUXON ---
+
+    // User timezone, fallback to UTC if not available
+    const userTimezone = req.headers['x-user-timezone'] || 'UTC';
+
+    // Server timezone based on where the server is located
     const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     // Use UTC time as base, then convert to respective zones
     const now = DateTime.utc();
 
+    // Convert to User's timezone
     const userTime = now.setZone(userTimezone);
+
+    // Convert to Server's timezone
     const serverTime = now.setZone(serverTimezone);
 
+    // Get formatted time strings
+    const userTimeStr = userTime.toFormat('HH:mm:ss');
+    const serverTimeStr = serverTime.toFormat('HH:mm:ss');
+    const serverTimeWithZone = `${serverTimeStr} ${serverTimezone}`;
+
+    // Get the date formatted for the user's time zone
+    const dateStr = userTime.toFormat('MMMM dd, yyyy');
+
+    // Logging key
     const logKey = `log${user.loginHistory.length + 1}`;
 
+    // Create the login history log entry
     const currentLog = {
       log: logKey,
-      date: userTime.toFormat('MMMM dd, yyyy'),
-      user_time: `${userTime.toFormat('HH:mm:ss')} ${userTimezone}`,
-      server_time: `${serverTime.toFormat('HH:mm:ss')} ${serverTimezone}`,
+      date: dateStr,
+      user_time: `${userTimeStr} ${userTimezone}`,  // User's local time with time zone
+      server_time: serverTimeWithZone,  // Server's time with time zone
       ip,
       location,
       userAgent: req.headers['user-agent']
