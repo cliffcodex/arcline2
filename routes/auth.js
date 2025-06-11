@@ -4,18 +4,29 @@ import getLocationFromIp from '../utils/getGeoLocation.js';
 
 const router = express.Router();
 
-// If you need to use IP-based location, do it inside a route
+// Register Route
 router.post('/register', async (req, res, next) => {
   try {
+    // Get the user's IP address
     const ip = req.ip;
-    const location = await getLocationFromIp(ip);
-    // You can pass location to your controller or use it here
+
+    // Attempt to get location based on IP
+    let location = 'Unknown';
+    try {
+      location = await getLocationFromIp(ip);  // Assuming this function returns location info
+    } catch (error) {
+      console.error('Error getting location from IP:', error.message);
+    }
+
+    // Pass location to register controller
     await register(req, res, location);
+
   } catch (err) {
-    next(err);
+    next(err); // Propagate errors to the error handler
   }
 });
 
+// Login Route
 router.post('/login', login);
 
 export default router;

@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken';
 import axios from 'axios';
 import { DateTime } from 'luxon';  // <-- Added luxon import
 
-
 // Register Controller
 export const register = async (req, res, location) => {
   try {
@@ -76,7 +75,6 @@ export const register = async (req, res, location) => {
   }
 };
 
-// Login Controller
 // Login Controller
 export const login = async (req, res) => {
   try {
