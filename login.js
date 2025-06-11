@@ -1,11 +1,9 @@
-// login.js
-
 import axios from 'axios';
 
 // Your login credentials
 const data = {
-  email: 'chat@chat.com',
-  password: 'password'
+  email: 'chat@chat.com', // Replace with user input or your test credentials
+  password: 'password'    // Replace with user input or your test credentials
 };
 
 // Get the user's local time zone using Intl API
@@ -15,7 +13,7 @@ const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 axios.post('http://localhost:5000/api/auth/login', data, {
   headers: {
     'Content-Type': 'application/json',
-    'x-user-timezone': userTimezone
+    'x-user-timezone': userTimezone // Adding the timezone in headers for backend use
   }
 })
 .then(response => {
@@ -24,5 +22,6 @@ axios.post('http://localhost:5000/api/auth/login', data, {
 })
 .catch(error => {
   console.error('❌ Login Failed');
+  // Handle the error gracefully
   console.error(error.response?.data || error.message);
 });

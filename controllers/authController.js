@@ -137,41 +137,57 @@ export const login = async (req, res) => {
       }
     }
 
-    const now = new Date();
-    const userTimezone = req.headers['x-user-timezone'] || 'UTC';
-    const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const now = new Date();
 
-    const userTimeStr = now.toLocaleTimeString('en-US', { timeZone: userTimezone, hour12: false });
-    const serverTimeStr = now.toLocaleTimeString('en-US', { timeZone: serverTimezone, hour12: false });
-    const dateStr = now.toLocaleDateString('en-US', { timeZone: userTimezone, year: 'numeric', month: 'long', day: 'numeric' });
+// Get the user's time zone from the request header or fallback to the server's time zone
+const userTimezone = req.headers['x-user-timezone'] || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    const logKey = `log${user.loginHistory.length + 1}`;
+// Get the server’s time zone (using Intl.DateTimeFormat's resolved options)
+const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    const currentLog = {
-      log: logKey,
-      date: dateStr,
-      user_time: `${userTimeStr} ${userTimezone}`,
-      server_time: `${serverTimeStr} ${serverTimezone}`,
-      ip,
-      location,
-      userAgent: req.headers['user-agent']
-    };
+// Create a new Date object for the user's time zone
+const userTime = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
 
-    user.loginHistory.push(currentLog);
+// Create a new Date object for the server's time zone
+const serverTime = new Date(now.toLocaleString('en-US', { timeZone: serverTimezone }));
 
-    await user.save();
+// Get the formatted times for user_time and server_time
+const userTimeStr = userTime.toLocaleTimeString('en-US', { hour12: false });
+const serverTimeStr = serverTime.toLocaleTimeString('en-US', { hour12: false });
+const serverTimeWithZone = `${serverTimeStr} ${serverTimezone}`;  // Example: "08:01:55 America/Los_Angeles"
 
-    res.json({
-      token,
-      user: {
-        name: user.name,
-        email: user.email,
-        user_id: user.usId,
-        lastLogin: user.lastLogin,
-        lastLoginIp: user.lastLoginIp,
-        recentLogins: [currentLog]  // Only return the current login log
-      }
-    });
+// Get the date formatted for the user's time zone
+const dateStr = userTime.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+const logKey = `log${user.loginHistory.length + 1}`;
+
+// Now create the log entry with correct user_time and server_time
+const currentLog = {
+  log: logKey,
+  date: dateStr,
+  user_time: `${userTimeStr} ${userTimezone}`,  // User's local time with time zone
+  server_time: serverTimeWithZone,  // Server's time with time zone (e.g., "08:01:55 America/Los_Angeles")
+  ip,
+  location,
+  userAgent: req.headers['user-agent']
+};
+
+user.loginHistory.push(currentLog);
+await user.save();
+
+res.json({
+  token,
+  user: {
+    name: user.name,
+    email: user.email,
+    user_id: user.usId,
+    lastLogin: user.lastLogin,
+    lastLoginIp: user.lastLoginIp,
+    recentLogins: [currentLog]  // Only return the current login log
+  }
+});
+
+
 
   } catch (err) {
     console.error('Login Error:', err.message);
