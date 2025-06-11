@@ -140,14 +140,15 @@ export const login = async (req, res) => {
     }
 
     // --- FIX TIME HANDLING USING LUXON ---
-
     const now = DateTime.utc();  // Get the current UTC time
 
     // Get the user's time zone from the request header or fallback to 'UTC'
     const userTimezone = req.headers['x-user-timezone'] || 'UTC';
+    console.log(`User Timezone from Header: ${userTimezone}`);  // DEBUG: log the user timezone
 
     // Get the server's time zone (e.g., the server's time zone can be 'America/Los_Angeles', 'Europe/London', etc.)
     const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    console.log(`Server Timezone: ${serverTimezone}`);  // DEBUG: log the server timezone
 
     // Convert to User's local time
     const userTime = now.setZone(userTimezone);
