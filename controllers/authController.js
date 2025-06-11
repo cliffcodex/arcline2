@@ -2,7 +2,6 @@ import User from '../models/user.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
-import { DateTime } from 'luxon';  // <-- Added luxon import
 
 // Register Controller
 export const register = async (req, res, location) => {
@@ -96,50 +95,70 @@ export const login = async (req, res) => {
     if (ip.includes(',')) ip = ip.split(',')[0].trim();
 
     let location = 'Unknown';
-    // [Your geolocation lookup logic]
+    const reservedRanges = [
+      '127.', '10.', '192.168.',
+      '172.16.', '172.17.', '172.18.', '172.19.',
+      '172.20.', '172.21.', '172.22.', '172.23.',
+      '172.24.', '172.25.', '172.26.', '172.27.',
+      '172.28.', '172.29.', '172.30.', '172.31.'
+    ];
+    const isReservedIp = reservedRanges.some(range => ip.startsWith(range));
+
+    if (!isReservedIp) {
+      try {
+        const geoRes = await axios.get(`http://ip-api.com/json/${ip}`);
+        if (geoRes.data.status === 'success') {
+          const { city, regionName, country } = geoRes.data;
+          location = `${city ?? 'Unknown city'}, ${regionName ?? 'Unknown region'}, ${country ?? 'Unknown country'}`;
+        } else {
+          console.warn('Geolocation failed:', geoRes.data.message || geoRes.data.status);
+        }
+      } catch (err) {
+        console.error('Geolocation lookup failed:', err.message);
+      }
+    } else {
+      location = 'Localhost or Private Network';
+    }
 
     user.lastLogin = new Date();
     user.lastLoginIp = ip;
 
     // Ensure loginHistory is an array
     if (!Array.isArray(user.loginHistory)) {
+      const original = user.loginHistory;
       user.loginHistory = [];
+
+      if (original && typeof original === 'object') {
+        for (const key in original) {
+          if (Object.prototype.hasOwnProperty.call(original, key)) {
+            user.loginHistory.push(original[key]);
+          }
+        }
+      }
     }
 
-    const now = DateTime.utc();  // Get UTC time first
-
-    // Get the user's time zone from the request header
+    const now = new Date();
     const userTimezone = req.headers['x-user-timezone'] || 'UTC';
-
-    // Get the server's time zone
     const serverTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    // Convert the UTC time to user and server times using Luxon
-    const userTime = now.setZone(userTimezone);
-    const serverTime = now.setZone(serverTimezone);
-
-    // Get the formatted times for user_time and server_time
-    const userTimeStr = userTime.toLocaleString(DateTime.TIME_SIMPLE);  // User's local time
-    const serverTimeStr = serverTime.toLocaleString(DateTime.TIME_SIMPLE);  // Server's local time
-
-    const serverTimeWithZone = `${serverTimeStr} ${serverTimezone}`;
-
-    const dateStr = userTime.toLocaleString(DateTime.DATE_MED);  // User's local date
+    const userTimeStr = now.toLocaleTimeString('en-US', { timeZone: userTimezone, hour12: false });
+    const serverTimeStr = now.toLocaleTimeString('en-US', { timeZone: serverTimezone, hour12: false });
+    const dateStr = now.toLocaleDateString('en-US', { timeZone: userTimezone, year: 'numeric', month: 'long', day: 'numeric' });
 
     const logKey = `log${user.loginHistory.length + 1}`;
 
-    // Create log entry with the correct times
     const currentLog = {
       log: logKey,
       date: dateStr,
-      user_time: `${userTimeStr} ${userTimezone}`,  // User time with time zone
-      server_time: serverTimeWithZone,  // Server time with time zone (e.g., "08:01:55 America/Los_Angeles")
+      user_time: `${userTimeStr} ${userTimezone}`,
+      server_time: `${serverTimeStr} ${serverTimezone}`,
       ip,
       location,
       userAgent: req.headers['user-agent']
     };
 
     user.loginHistory.push(currentLog);
+
     await user.save();
 
     res.json({
@@ -147,12 +166,13 @@ export const login = async (req, res) => {
       user: {
         name: user.name,
         email: user.email,
-        user_id: user._id,
+        user_id: user.usId,
         lastLogin: user.lastLogin,
         lastLoginIp: user.lastLoginIp,
-        recentLogins: [currentLog]
+        recentLogins: [currentLog]  // Only return the current login log
       }
     });
+
   } catch (err) {
     console.error('Login Error:', err.message);
     res.status(500).json({ error: 'Server error' });
