@@ -65,7 +65,6 @@ export const login = async (req, res) => {
       expiresIn: '7d'
     });
 
-    // ✅ Normalize IP
     let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
     if (ip === '::1' || ip === '::ffff:127.0.0.1') ip = '127.0.0.1';
     if (ip.includes(',')) ip = ip.split(',')[0].trim();
@@ -99,13 +98,12 @@ export const login = async (req, res) => {
     user.lastLogin = new Date();
     user.lastLoginIp = ip;
 
-    // ✅ Fix loginHistory to ensure it's an array
+    // ✅ Ensure loginHistory is an array and convert if needed
     if (!Array.isArray(user.loginHistory)) {
       const original = user.loginHistory;
       user.loginHistory = [];
 
       if (original && typeof original === 'object') {
-        // Convert from Map-like or object to array of values
         for (const key in original) {
           if (Object.prototype.hasOwnProperty.call(original, key)) {
             user.loginHistory.push(original[key]);
@@ -153,4 +151,3 @@ export const login = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
-
