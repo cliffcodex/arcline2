@@ -65,10 +65,10 @@ export const login = async (req, res) => {
       expiresIn: '7d'
     });
 
-    // ✅ Normalize IP and convert IPv6 to IPv4 loopback
+    // Normalize IP and convert IPv6 to IPv4 loopback
     let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
     if (ip === '::1' || ip === '::ffff:127.0.0.1') ip = '127.0.0.1';
-    if (ip.includes(',')) ip = ip.split(',')[0].trim(); // Handle multiple forwarded IPs
+    if (ip.includes(',')) ip = ip.split(',')[0].trim();
 
     let location = 'Unknown';
     const reservedRanges = [
@@ -99,12 +99,9 @@ export const login = async (req, res) => {
     user.lastLogin = new Date();
     user.lastLoginIp = ip;
 
-    if (!user.loginHistory) {
-      user.loginHistory = new Map();
+    if (!Array.isArray(user.loginHistory)) {
+      user.loginHistory = [];
     }
-
-    const loginCount = user.loginHistory.size;
-    const logKey = `log${loginCount + 1}`;
 
     const now = new Date();
     const userTimezone = req.headers['x-user-timezone'] || 'UTC';
@@ -114,7 +111,11 @@ export const login = async (req, res) => {
     const serverTimeStr = now.toLocaleTimeString('en-US', { timeZone: serverTimezone, hour12: false });
     const dateStr = now.toLocaleDateString('en-US', { timeZone: userTimezone, year: 'numeric', month: 'long', day: 'numeric' });
 
-    user.loginHistory.set(logKey, {
+    // create the log key like "log1", "log2", etc.
+    const logKey = `log${user.loginHistory.length + 1}`;
+
+    user.loginHistory.push({
+      log: logKey,
       date: dateStr,
       user_time: `${userTimeStr} ${userTimezone}`,
       server_time: `${serverTimeStr} ${serverTimezone}`,
@@ -133,7 +134,7 @@ export const login = async (req, res) => {
         user_id: user.usId,
         lastLogin: user.lastLogin,
         lastLoginIp: user.lastLoginIp,
-        recentLogins: Object.fromEntries(user.loginHistory)
+        recentLogins: user.loginHistory
       }
     });
 
